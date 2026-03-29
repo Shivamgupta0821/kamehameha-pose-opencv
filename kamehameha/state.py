@@ -16,7 +16,7 @@ class KamehamehaState:
         # Beam animation progress: 0.0 → 1.0
         self.beam_progress = 0.0
         self.beam_start_time = None
-        self.beam_duration = 5.0  # seconds for beam to cross screen
+        self.beam_duration = 3.0  # seconds for beam to cross screen
 
         # Flash effect on fire
         self.flash_intensity = 0.0  # 0.0 = no flash, 1.0 = full white

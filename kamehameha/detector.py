@@ -30,7 +30,14 @@ class GestureDetector:
         self.history = deque(maxlen=10)
         self.charge_frames = 0
         self.prev_z = None
-        self.prev_separation = 0  
+        self.prev_separation = 0
+
+        # Robustness
+        self.missing_frames = 0
+        self.last_center = (0.5, 0.5)
+
+        #  Prevent double firing
+        self.fire_cooldown = 0
 
     def detect(self, multi_hand_landmarks):
 
@@ -42,19 +49,34 @@ class GestureDetector:
             'separation': 0.0,
         }
 
-        # No hands
+        #  Cooldown update
+        if self.fire_cooldown > 0:
+            self.fire_cooldown -= 1
+
+        #  No hands
         if not multi_hand_landmarks:
             self.history.clear()
             self.charge_frames = 0
+            self.prev_z = None
+            self.prev_separation = 0
             return result
 
         result['hands_detected'] = len(multi_hand_landmarks)
 
-        #  Need 2 hands
+        #  Allow temporary loss of one hand
         if len(multi_hand_landmarks) < 2:
-            self.history.clear()
-            self.charge_frames = 0
-            return result
+            self.missing_frames += 1
+
+            if self.missing_frames < 10:
+                result['charging_pose'] = self.charge_frames > 3
+                result['center'] = self.last_center
+                return result
+            else:
+                self.history.clear()
+                self.charge_frames = 0
+                return result
+        else:
+            self.missing_frames = 0
 
         lm1 = multi_hand_landmarks[0]
         lm2 = multi_hand_landmarks[1]
@@ -66,6 +88,9 @@ class GestureDetector:
         center_x = (c1[0] + c2[0]) / 2
         center_y = (c1[1] + c2[1]) / 2
         result['center'] = (center_x, center_y)
+
+        #  store last valid center
+        self.last_center = (center_x, center_y)
 
         # Charging logic
         dist = distance_2d(c1, c2)
@@ -79,13 +104,11 @@ class GestureDetector:
 
         result['charging_pose'] = self.charge_frames > 3
 
-        #  FIRE GESTURE (FINAL VERSION)
+        #  FIRE DETECTION
 
-        # Separation
         separation = abs(c1[0] - c2[0])
         result['separation'] = separation
 
-        # Z depth (forward movement)
         z1 = c1[2]
         z2 = c2[2]
         current_z = (z1 + z2) / 2
@@ -94,23 +117,25 @@ class GestureDetector:
         if self.prev_z is not None:
             z_movement = self.prev_z - current_z
 
-        #  Detect sudden separation (NOT static apart)
         separation_increase = separation - self.prev_separation
 
-        #  FINAL FIRE CONDITION
-        if result['charging_pose'] and (
-            z_movement > 0.006 or separation_increase > 0.05
+        #  FINAL FIRE CONDITION + COOLDOWN
+        if self.fire_cooldown == 0 and (
+            (result['charging_pose'] or self.charge_frames > 3)
+            and (z_movement > 0.006 or separation_increase > 0.05)
         ):
             result['fire_gesture'] = True
+            self.fire_cooldown = 20   # ~0.6 sec cooldown
+            self.charge_frames = 0    # reset charge after firing
 
-        # Debug (optional)
+        # Debug
         print(
             "Z:", round(z_movement, 4),
             "Sep:", round(separation, 3),
             "ΔSep:", round(separation_increase, 3)
         )
 
-        # Update previous values
+        # Update memory
         self.prev_z = current_z
         self.prev_separation = separation
 
