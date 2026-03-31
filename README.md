@@ -69,12 +69,12 @@ pip install -r kamehameha/requirements.txt
 python kamehameha/main.py
 
 Controls
-Hold both hands together → Start charging
-Hold for ~1–2 seconds → Build energy
-Perform one of the following to fire:
-Push hands forward toward camera
-Quickly spread hands sideways
-Press Q or ESC to exit
+-Hold both hands together → Start charging
+-Hold for ~1–2 seconds → Build energy
+-Perform one of the following to fire:
+-Push hands forward toward camera
+-Quickly spread hands sideways
+-Press Q or ESC to exit
 
 Future Improvements
 Voice trigger ("Kamehameha")
