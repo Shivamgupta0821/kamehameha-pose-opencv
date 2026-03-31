@@ -85,5 +85,3 @@ Web or mobile deployment
 
 Author
 Shivam Gupta
-
-## Project Structure
